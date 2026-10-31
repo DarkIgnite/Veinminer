@@ -33,6 +33,29 @@ import kotlin.time.Duration.Companion.milliseconds
 object VeinMinerEvent {
     private val cooldown = mutableSetOf<UUID>()
     var enabled: Boolean = true
+    val PLAYER_TOGGLE_KEY = NamespacedKey(INSTANCE, "veinminer_enabled")
+
+    fun isPlayerEnabled(player: Player): Boolean {
+        val pdc = player.persistentDataContainer
+        if (!pdc.has(PLAYER_TOGGLE_KEY, org.bukkit.persistence.PersistentDataType.BYTE)) {
+            return true // Default: enabled
+        }
+        return pdc.get(PLAYER_TOGGLE_KEY, org.bukkit.persistence.PersistentDataType.BYTE) == 1.toByte()
+    }
+
+    fun setPlayerEnabled(player: Player, enabled: Boolean) {
+        player.persistentDataContainer.set(
+            PLAYER_TOGGLE_KEY,
+            org.bukkit.persistence.PersistentDataType.BYTE,
+            if (enabled) 1.toByte() else 0.toByte()
+        )
+    }
+
+    fun togglePlayer(player: Player): Boolean {
+        val newState = !isPlayerEnabled(player)
+        setPlayerEnabled(player, newState)
+        return newState
+    }
 
     /**
      * @return a set of all blocks in the same group as this material. If the material is not in a group, it will return an empty set
@@ -119,6 +142,9 @@ object VeinMinerEvent {
 
         // Check if player is in creative
         if (player.gameMode == GameMode.CREATIVE) return null
+
+        // Check if player enabled veinminer personally
+        if (!isPlayerEnabled(player)) return null
 
         val uuid = player.uniqueId
         val hasClient = PaperNetworking.registeredPlayers.contains(uuid)

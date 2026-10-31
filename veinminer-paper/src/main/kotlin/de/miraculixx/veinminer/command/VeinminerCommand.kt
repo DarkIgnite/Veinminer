@@ -21,11 +21,13 @@ import dev.jorel.commandapi.executors.CommandArguments
 import dev.jorel.commandapi.kotlindsl.*
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
 import java.util.concurrent.CompletableFuture
 import kotlin.reflect.typeOf
 
 object VeinminerCommand {
     private val command = commandTree("veinminer") {
+        withAliases("vm")
         anyExecutor { sender, _ ->
             sender.sendMessage(
                 cmp(
@@ -79,12 +81,44 @@ object VeinminerCommand {
         literalArgument("toggle") {
             withPermission(permissionToggle)
             anyExecutor { sender, _ ->
+                if (sender is Player) {
+                    val newState = VeinMinerEvent.togglePlayer(sender)
+                    if (newState) {
+                        sender.sendMessage(cmp("Veinminer diaktifkan untukmu!", cGreen.color()))
+                    } else {
+                        sender.sendMessage(cmp("Veinminer dinonaktifkan untukmu!", cRed.color()))
+                    }
+                } else {
+                    sender.sendMessage(cmp("Gunakan '/veinminer toggleglobal' untuk toggle server-wide.", cRed.color()))
+                }
+            }
+
+            booleanArgument("state") {
+                anyExecutor { sender, args ->
+                    if (sender is Player) {
+                        val state = args.get(0) as Boolean
+                        VeinMinerEvent.setPlayerEnabled(sender, state)
+                        if (state) {
+                            sender.sendMessage(cmp("Veinminer diaktifkan untukmu!", cGreen.color()))
+                        } else {
+                            sender.sendMessage(cmp("Veinminer dinonaktifkan untukmu!", cRed.color()))
+                        }
+                    } else {
+                        sender.sendMessage(cmp("Gunakan '/veinminer toggleglobal' untuk toggle server-wide.", cRed.color()))
+                    }
+                }
+            }
+        }
+
+        literalArgument("toggleglobal") {
+            withPermission("veinminer.admin")
+            anyExecutor { sender, _ ->
                 if (VeinMinerEvent.enabled) {
                     VeinMinerEvent.enabled = false
-                    sender.sendMessage(cmp("Veinminer functions disabled", cRed.color()))
+                    sender.sendMessage(cmp("[Veinminer] Global functions disabled!", cRed.color()))
                     return@anyExecutor
                 }
-                sender.sendMessage(cmp("Veinminer functions enabled", cGreen.color()))
+                sender.sendMessage(cmp("[Veinminer] Global functions enabled!", cGreen.color()))
                 VeinMinerEvent.enabled = true
             }
         }
